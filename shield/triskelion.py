@@ -110,7 +110,7 @@ class TriskelionIRCHandler(shield.IRCHandler):
             return
         if message == '-update-packages-all':
             run('*', 'exec_cmd', 'apt-get update && apt-get upgrade')
-        elif message == '-update-self':
+        elif message == '-update-clients':
             run('*', 'update_self')
         elif message == '-online':
             say('online clients: {0}'.format(', '.join(shield.clients.keys())))
