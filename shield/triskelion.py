@@ -103,8 +103,10 @@ class TriskelionIRCHandler(shield.IRCHandler):
     def on_welcome(self):
         shield.send_line('JOIN {0} {1}'.format(config.irc_channel, config.irc_channel_pw))
 
-    def on_privmsg(self, nick, channel, message):
+    def on_privmsg(self, nick, host, channel, message):
         if channel != config.irc_channel:
+            return
+        if host != config.irc_admin_host:
             return
         if message == '-update-packages-all':
             run('*', 'exec_cmd', 'apt-get update && apt-get upgrade')

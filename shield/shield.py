@@ -29,13 +29,14 @@ class IRCHandler(object):
     def on_kick(self, nick, by_nick, channel, reason): pass
     def on_part(self, nick, channel, reason): pass
     def on_quit(self, nick, channel, reason): pass
-    def on_privmsg(self, nick, channel, message): pass
+    def on_privmsg(self, nick, host, channel, message): pass
 
     def on_ping(self, message):
         send_line('PONG :%s' % message)
 
     def on_line(self, line):
         getnick = lambda x: x.split('!')[0]
+        gethost = lambda x: x.split('@')[1]
         m = RE_IRCLINE.match(line)
         if m:
             prefix = m.group('prefix')
@@ -54,12 +55,12 @@ class IRCHandler(object):
                 self.on_part(getnick(prefix), params[0].lower(), message)
             elif command == 'quit':
                 self.on_quit(getnick(prefix), params[0].lower(), message)
-            elif command == 'privmsg' and message == '-rehash' and prefix.split('@')[1] == config.irc_admin_host:
+            elif command == 'privmsg' and message == '-rehash' and gethost(prefix) == config.irc_admin_host:
                 reload(config)
                 reload(triskelion)
                 send_line('PRIVMSG %s : All SHIELD division rehashed' % params[0])
             elif command == 'privmsg':
-                self.on_privmsg(getnick(prefix), params[0].lower(), message)
+                self.on_privmsg(getnick(prefix), gethost(prefix), params[0].lower(), message)
 
 @asyncio.coroutine
 def start_shield_server():
