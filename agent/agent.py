@@ -38,7 +38,7 @@ def start_agent_client():
         else:
             yield from ev.wait()
         finally:
-            yield from asyncio.sleep(1)
+            yield from asyncio.sleep(10)
 
 def reload_all():
     reload(config)
