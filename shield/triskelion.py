@@ -124,7 +124,6 @@ class TriskelionIRCHandler(shield.IRCHandler):
                     offline.append(client)
             say('online: {0} / offline: {1}'.format(', '.join(online), ', '.join(offline)))
 
-protocol = SHIELDProtocol()
 handler = TriskelionIRCHandler()
 def irc_handle(line):
     res = handler.on_line(line)
