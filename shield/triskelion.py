@@ -35,7 +35,7 @@ class SHIELDProtocol(asyncio.Protocol):
         except:
             self.transport.close()
             return
-        logging.debug('[LINK] >>> {0}'.format(json))
+        logging.debug('[LINK] ({0}) >>> {1}'.format(self.name, json))
         if self.authenticated:
             if json['type'] == 'auth':
                 self.writejson({'type': 'auth', 'msg': 'error', 'error': 'already-authenticated'})
@@ -87,7 +87,7 @@ class SHIELDProtocol(asyncio.Protocol):
     def writejson(self, d):
         json = simplejson.dumps(d)
         self.transport.write(json.encode('utf-8') + b'\n')
-        logging.debug('[LINK] <<< {0}'.format(json))
+        logging.debug('[LINK] ({0}) <<< {1}'.format(self.name, json))
 
     def exec_cmd(self, cmd):
         self.writejson({'type': 'exec', 'command': cmd})
