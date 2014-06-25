@@ -114,6 +114,15 @@ class TriskelionIRCHandler(shield.IRCHandler):
             run('*', 'update_self')
         elif message == '-online':
             say('online clients: {0}'.format(', '.join(shield.clients.keys())))
+        elif message == '-list':
+            online = []
+            offline = []
+            for client in config.fingerprints.keys():
+                if client in shield.clients.keys():
+                    online.append(client)
+                else:
+                    offline.append(client)
+            say('online: {0} / offline: {1}'.format(', '.join(online), ', '.join(offline)))
 
 protocol = SHIELDProtocol()
 handler = TriskelionIRCHandler()
