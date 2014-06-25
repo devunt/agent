@@ -12,6 +12,9 @@ from time import time
 import config
 
 
+if __name__ != '__main__':
+    import agent
+
 def loadavg():
     with open('/proc/loadavg', 'r') as f:
         load = f.read().split()[0]
@@ -29,7 +32,7 @@ def disk():
         )
     )
 
-def run_command(cmd):
+def run_command(cmd, async=False):
     try:
         return (0, subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT))
     except subprocess.SubprocessError as e:
@@ -62,6 +65,14 @@ class AgentProtocol(asyncio.Protocol):
                 output = result[1].strip().split(b'\n')
                 self.writejson({'type': 'exec', 'returncode': result[0], 'output': output})
             asyncio.async(run_command_task(json['command']))
+        elif json['type'] == 'selfupdate':
+            @asyncio.coroutine
+            def selfupdate():
+                run_command('git pull')
+                logging.info('Self update done')
+                self.writejson({'type': 'selfupdate', 'msg': 'done'})
+                agent.reload_all()
+            asyncio.async(selfupdate())
 
     def _connection_lost(self, exc):
         logging.info('Connection closed')

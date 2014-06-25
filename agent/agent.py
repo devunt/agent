@@ -40,7 +40,7 @@ def start_agent_client():
         finally:
             yield from asyncio.sleep(1)
 
-def reload():
+def reload_all():
     reload(config)
     reload(protocol)
     transport.close()

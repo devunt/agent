@@ -14,6 +14,9 @@ import config
 if __name__ != '__main__':
     import shield
 
+def say(message):
+    shield.send_line('PRIVMSG {0} : {1}'.format(config.irc_channel, message))
+
 def run(mask, func, *args, **kwargs):
     condition = re.compile(mask.replace('.', '\\.').replace('*', '.*'))
     for client in filter(lambda x: condition.match(x), shield.clients.keys()):
@@ -39,32 +42,45 @@ class SHIELDProtocol(asyncio.Protocol):
             elif json['type'] == 'heartbeat':
                 if json['msg'] == 'pong':
                     self.last_received_heartbeat = time()
+            elif json['type'] == 'exec':
+                pass
+            elif json['type'] == 'selfupdate':
+                if json['msg'] == 'done':
+                    self.say('client is now up-to-date')
         else:
             if json['type'] == 'auth':
-                if json['fingerprint'] == config.fingerprints[json['name']]:
-                    self.name = json['name']
-                    self.authenticated = True
-                    self.writejson({'type': 'auth', 'msg': 'authenticated'})
-                    self.last_received_heartbeat = time()
-                    shield.clients[self.name] = self
-                    @asyncio.coroutine
-                    def heartbeat():
-                        while True:
-                            yield from asyncio.sleep(10)
-                            if not self.transport:
-                                return
-                            self.writejson({'type': 'heartbeat', 'msg': 'ping', 'timestamp': time()})
-                            if time() - self.last_received_heartbeat > 30:
-                                self.transport.close()
-                                return
-                    asyncio.async(heartbeat())
+                if json['name'] in shield.clients.keys():
+                    self.writejson({'type': 'auth', 'msg': 'error', 'error': 'already-connected'})
+                    self.transport.close()
+                    return
                 else:
-                    self.writejson({'type': 'auth', 'msg': 'error', 'error': 'wrong-fingerprint'})
+                    if json['fingerprint'] == config.fingerprints[json['name']]:
+                        self.name = json['name']
+                        self.authenticated = True
+                        self.writejson({'type': 'auth', 'msg': 'authenticated'})
+                        self.say('is now \002online\x0f!')
+                        self.last_received_heartbeat = time()
+                        shield.clients[self.name] = self
+                        @asyncio.coroutine
+                        def heartbeat():
+                            while True:
+                                yield from asyncio.sleep(10)
+                                if not self.transport:
+                                    return
+                                self.writejson({'type': 'heartbeat', 'msg': 'ping', 'timestamp': time()})
+                                if time() - self.last_received_heartbeat > 30:
+                                    self.say('client doesn\'t reponding to heartbeat packet. disconnecting...')
+                                    self.transport.close()
+                                    return
+                        asyncio.async(heartbeat())
+                    else:
+                        self.writejson({'type': 'auth', 'msg': 'error', 'error': 'wrong-fingerprint'})
             else:
                 self.writejson({'type': json['type'], 'msg': 'error', 'error': 'not-authenticated'})
 
     def connection_lost(self, exc):
-        logging.info('[LINK] <{0}> Connection closed'.format(self.name))
+        logging.info('[LINK] <{0}> Connection closed: {1}'.format(self.name, exc))
+        self.say('is now \002offline\x0f!' + (exc or ''))
         self.transport = None
         del shield.clients[self.name]
 
@@ -75,6 +91,13 @@ class SHIELDProtocol(asyncio.Protocol):
 
     def exec_cmd(self, cmd):
         self.writejson({'type': 'exec', 'command': cmd})
+
+    def update_self(self):
+        self.writejson({'type': 'selfupdate'})
+
+    def say(self, message):
+        if self.authenticated:
+            shield.send_line('PRIVMSG {0} : [{1}] {2}'.format(config.irc_channel, self.name, message))
 
 class TriskelionIRCHandler(shield.IRCHandler):
     def on_welcome(self):
@@ -87,7 +110,10 @@ class TriskelionIRCHandler(shield.IRCHandler):
             run('*', 'exec_cmd', 'apt-get update && apt-get upgrade')
         elif message == '-update-self':
             run('*', 'update_self')
+        elif message == '-online':
+            say('online clients: {0}'.format(', '.join(shield.clients.keys())))
 
+protocol = SHIELDProtocol()
 handler = TriskelionIRCHandler()
 def irc_handle(line):
     res = handler.on_line(line)

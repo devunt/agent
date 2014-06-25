@@ -66,8 +66,7 @@ def start_shield_server():
     host = config.listen_host
     port = config.listen_port
     try:
-        global protocol
-        yield from loop.create_server(triskelion.SHIELDProtocol, host=host, port=port)
+        yield from loop.create_server(lambda: triskelion.protocol, host=host, port=port)
     except Exception as e:
         logging.critical('!!! Fail to bind server at [%s:%d]: %s' % (host, port, e.args[1]))
         return 1
