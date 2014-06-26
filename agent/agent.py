@@ -27,7 +27,7 @@ def start_agent_client():
         port = config.shield_port
         ev.clear()
         try:
-            global transport
+            global transport, proto
             transport, proto = yield from loop.create_connection(protocol.AgentProtocol, host, port)
             def connection_lost(exc):
                 proto._connection_lost(exc)
@@ -41,6 +41,7 @@ def start_agent_client():
             yield from asyncio.sleep(10)
 
 def reload_all():
+    proto.writejson({'type': 'silent', 'msg': True})
     reload(config)
     reload(protocol)
     transport.close()

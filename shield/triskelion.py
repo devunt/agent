@@ -25,6 +25,7 @@ def run(mask, func, *args, **kwargs):
 class SHIELDProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.name = ''
+        self.silent = False
         self.authenticated = False
         self.last_received_heartbeat = False
         self.transport = transport
@@ -36,6 +37,9 @@ class SHIELDProtocol(asyncio.Protocol):
             self.transport.close()
             return
         logging.debug('[LINK] ({0}) >>> {1}'.format(self.name, json))
+        if json['type'] == 'silent':
+            self.silent = json['msg']
+            return
         if self.authenticated:
             if json['type'] == 'auth':
                 self.writejson({'type': 'auth', 'msg': 'error', 'error': 'already-authenticated'})
@@ -46,7 +50,7 @@ class SHIELDProtocol(asyncio.Protocol):
                 pass
             elif json['type'] == 'selfupdate':
                 if json['msg'] == 'done':
-                    self.say('client is now up-to-date')
+                    self.say('client is now up-to-date. reconnecting...')
         else:
             if json['type'] == 'auth':
                 if json['name'] in shield.clients.keys():
@@ -79,10 +83,10 @@ class SHIELDProtocol(asyncio.Protocol):
                 self.writejson({'type': json['type'], 'msg': 'error', 'error': 'not-authenticated'})
 
     def connection_lost(self, exc):
+        del shield.clients[self.name]
+        self.transport = None
         logging.info('[LINK] <{0}> Connection closed: {1}'.format(self.name, exc))
         self.say('is now \002offline\x0f!' + (exc or ''))
-        self.transport = None
-        del shield.clients[self.name]
 
     def writejson(self, d):
         json = simplejson.dumps(d)
@@ -96,7 +100,7 @@ class SHIELDProtocol(asyncio.Protocol):
         self.writejson({'type': 'selfupdate'})
 
     def say(self, message):
-        if self.authenticated:
+        if self.authenticated and not self.silent:
             shield.send_line('PRIVMSG {0} : [{1}] {2}'.format(config.irc_channel, self.name, message))
 
 class TriskelionIRCHandler(shield.IRCHandler):
@@ -122,7 +126,7 @@ class TriskelionIRCHandler(shield.IRCHandler):
                     online.append(client)
                 else:
                     offline.append(client)
-            say('online: {0} / offline: {1}'.format(', '.join(online), ', '.join(offline)))
+            say('\002online\x0f: {0} / \002offline\x0f: {1}'.format(', '.join(online), ', '.join(offline)))
 
 handler = TriskelionIRCHandler()
 def irc_handle(line):
