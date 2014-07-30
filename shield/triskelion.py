@@ -73,7 +73,7 @@ class SHIELDProtocol(asyncio.Protocol):
                                     return
                                 self.writejson({'type': 'heartbeat', 'msg': 'ping', 'timestamp': time()})
                                 if time() - self.last_received_heartbeat > 30:
-                                    self.say('client doesn\'t reponding to heartbeat packet. disconnecting...')
+                                    self.say('client does not respond to heartbeat packet. disconnecting...')
                                     self.transport.close()
                                     return
                         asyncio.async(heartbeat())
